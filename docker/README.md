@@ -309,6 +309,114 @@ RUN ELECTRON_SKIP_BINARY_DOWNLOAD=1 pnpm install --no-frozen-lockfile --ignore-s
     && pnpm rebuild
 ```
 
+### 6. pnpm Shell 环境检测问题
+
+**问题描述**：
+```
+ERR_PNPM_UNKNOWN_SHELL  Could not infer shell type.
+
+Set the SHELL environment variable to your active shell.
+Supported shell languages are bash, zsh, fish, ksh, dash, and sh.
+```
+
+**原因分析**：
+1. Docker 容器中未设置 SHELL 环境变量
+2. pnpm setup 命令需要正确的 shell 环境
+3. pnpm 全局安装路径未正确导出
+4. shell 配置文件未被正确加载
+
+**解决方案**：
+1. 显式设置 SHELL 环境变量为 /bin/bash
+2. 使用 bash -c 执行 pnpm setup
+3. 正确设置和导出 PNPM_HOME
+4. 确保加载 shell 配置文件
+
+**具体改进**：
+```dockerfile
+# 设置必要的环境变量
+ENV SHELL="/bin/bash"
+
+# 优化 pnpm 安装和配置
+RUN npm install -g pnpm@8.15.4 \
+    && bash -c "source ~/.bashrc && pnpm setup" \
+    && export PNPM_HOME="/root/.local/share/pnpm" \
+    && export PATH="$PNPM_HOME:$PATH"
+```
+
+### 7. Electron 运行环境优化
+
+**优化内容**：
+1. npm 配置优化
+   - 禁用不必要的警告和审计
+   - 优化日志级别
+   - 配置 Electron 下载镜像
+
+2. 系统依赖优化
+   - 添加完整的 Electron 运行依赖
+   - 优化构建工具链
+   - 添加必要的图形库支持
+
+3. 构建流程优化
+   - 使用 `--shamefully-hoist` 优化依赖提升
+   - 添加原生模块重建步骤
+   - 优化启动脚本
+
+**具体改进**：
+```dockerfile
+# npm 配置优化
+ENV NPM_CONFIG_LOGLEVEL=error \
+    NPM_CONFIG_FUND=false \
+    NPM_CONFIG_AUDIT=false \
+    ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/
+
+# 完整的系统依赖
+RUN apt-get install -y \
+    libgbm1 libxshmfence1 libx11-xcb1 \
+    libdrm2 libatk1.0-0 libatk-bridge2.0-0 \
+    # ... 更多依赖
+
+# 构建优化
+RUN pnpm install --shamefully-hoist \
+    && npm rebuild sqlite3 --build-from-source \
+    && npm rebuild lzma-native --build-from-source
+```
+
+### 8. 容器安全性与性能优化
+
+**优化内容**：
+1. 系统配置优化
+   - 使用国内镜像源加速构建
+   - 最小化安装系统依赖
+   - 添加网络和安全工具
+
+2. 隐私与安全增强
+   - 禁用遥测和数据收集
+   - 添加隐私保护补丁
+   - 配置安全相关环境变量
+
+3. 目录结构优化
+   - 创建完整的应用目录结构
+   - 合理设置目录权限
+   - 优化数据持久化配置
+
+**具体改进**：
+```dockerfile
+# 隐私和安全配置
+ENV DISABLE_TELEMETRY=true \
+    DISABLE_ANALYTICS=true \
+    PRIVACY_MODE=strict
+
+# 系统优化
+RUN apt-get install -y --no-install-recommends \
+    dnsutils iptables ca-certificates \
+    libgl1-mesa-dri libgl1-mesa-glx
+
+# 目录结构
+RUN mkdir -p /app/data/files /app/data/temp \
+    /app/logs /app/plugins /app/config \
+    /app/temp /app/cache
+```
+
 ## 最佳实践建议
 
 1. **依赖管理**：
@@ -377,4 +485,22 @@ RUN ELECTRON_SKIP_BINARY_DOWNLOAD=1 pnpm install --no-frozen-lockfile --ignore-s
 - 修复 pnpm 全局工具路径问题
 - 优化依赖安装流程
 - 添加 electron 构建优化
-- 更新构建文档 
+- 更新构建文档
+
+### 2024-03-17
+- 修复 pnpm shell 环境检测问题
+- 优化 pnpm 安装和配置流程
+- 添加 shell 环境变量设置
+- 更新构建文档
+
+### 2024-03-18
+- 整合历史版本优秀实践
+- 优化 Electron 运行环境配置
+- 完善系统依赖安装
+- 改进构建流程和启动脚本
+
+### 2024-03-19
+- 整合容器安全性优化
+- 添加隐私保护机制
+- 优化系统配置和依赖
+- 完善目录结构设计 
