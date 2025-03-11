@@ -6,7 +6,9 @@ ENV NODE_ENV=production \
     ELECTRON_DISABLE_SANDBOX=true \
     DISPLAY=:99 \
     DEBIAN_FRONTEND=noninteractive \
-    NODE_OPTIONS="--max-old-space-size=4096"
+    NODE_OPTIONS="--max-old-space-size=4096" \
+    PNPM_HOME="/root/.local/share/pnpm" \
+    PATH="/root/.local/share/pnpm:$PATH"
 
 # 系统依赖安装
 RUN apt-get update && apt-get install -y \
@@ -23,6 +25,7 @@ RUN apt-get update && apt-get install -y \
     python3 \
     make \
     g++ \
+    curl \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -33,17 +36,18 @@ RUN groupadd -r appuser && useradd -r -g appuser appuser
 WORKDIR /app
 
 # 安装 pnpm
-RUN npm install -g pnpm@8.15.4 \
+RUN curl -fsSL https://get.pnpm.io/install.sh | bash - \
+    && pnpm config set registry https://registry.npmjs.org/ \
     && pnpm config set store-dir /root/.pnpm-store \
-    && pnpm config set registry https://registry.npmmirror.com
+    && pnpm config set strict-ssl false
 
 # 复制 package.json 和 lock 文件
 COPY package.json pnpm-lock.yaml ./
 
 # 安装项目依赖
 RUN --mount=type=cache,target=/root/.pnpm-store \
-    pnpm install --frozen-lockfile || \
-    (sleep 5 && pnpm install --frozen-lockfile)
+    pnpm install --frozen-lockfile --network-timeout 100000 || \
+    (pnpm store prune && pnpm install --frozen-lockfile --network-timeout 100000)
 
 # 复制构建配置文件
 COPY .erb/ .erb/

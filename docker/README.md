@@ -124,10 +124,73 @@ docker run -it --rm \
   lazy-cs:dev
 ```
 
+## 故障记录与解决方案
+
+### 1. pnpm 依赖安装失败
+
+**问题描述**：
+```
+ERR_PNPM_FETCH_404  GET https://registry.npmmirror.com/end-of-stream/-/end-of-stream-1.4.5.tgz: Not Found - 404
+No authorization header was set for the request.
+```
+
+**原因分析**：
+1. 使用淘宝镜像源（npmmirror.com）时某些包无法访问
+2. pnpm 版本过低（8.15.4）可能存在兼容性问题
+3. 网络超时设置不合理
+4. SSL 证书验证问题
+
+**解决方案**：
+1. 切换到官方 npm 源：`registry.npmjs.org`
+2. 使用最新版 pnpm 安装脚本
+3. 增加网络超时时间
+4. 禁用严格的 SSL 验证
+5. 配置 pnpm 环境变量
+6. 添加重试机制和缓存清理
+
+**具体改进**：
+```dockerfile
+ENV PNPM_HOME="/root/.local/share/pnpm" \
+    PATH="/root/.local/share/pnpm:$PATH"
+
+RUN curl -fsSL https://get.pnpm.io/install.sh | bash - \
+    && pnpm config set registry https://registry.npmjs.org/ \
+    && pnpm config set store-dir /root/.pnpm-store \
+    && pnpm config set strict-ssl false
+
+RUN --mount=type=cache,target=/root/.pnpm-store \
+    pnpm install --frozen-lockfile --network-timeout 100000 || \
+    (pnpm store prune && pnpm install --frozen-lockfile --network-timeout 100000)
+```
+
+## 最佳实践建议
+
+1. **依赖管理**：
+   - 使用官方包源而不是镜像源
+   - 设置合理的网络超时时间
+   - 配置依赖缓存
+   - 实现失败重试机制
+
+2. **构建优化**：
+   - 使用多阶段构建
+   - 合理设置缓存
+   - 优化层级结构
+
+3. **安全性**：
+   - 使用非 root 用户
+   - 最小化安装包
+   - 及时更新依赖
+
 ## 更新日志
 
 ### 2024-03-11
 - 初始化 Docker 项目结构
 - 创建基础 Dockerfile
 - 配置 GitHub Actions 自动构建
-- 添加项目文档 
+- 添加项目文档
+
+### 2024-03-12
+- 优化 pnpm 包管理器配置
+- 修复依赖安装失败问题
+- 添加故障记录与解决方案
+- 更新构建最佳实践建议 
