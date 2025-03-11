@@ -86,15 +86,18 @@ RUN npm install -g pnpm@8.15.4 \
     && export PATH="$PNPM_HOME:$PATH" \
     && pnpm install -g ts-node typescript electron-builder \
     && pnpm config set registry https://registry.npmjs.org/ \
+    && mkdir -p /root/.pnpm-store/v3/files \
     && pnpm config set store-dir /root/.pnpm-store \
     && pnpm config set strict-ssl false
 
 # 复制 package.json 和 lock 文件
 COPY package.json pnpm-lock.yaml ./
 
-# 修复 pnpm-lock.yaml 中的依赖版本问题并清理缓存
-RUN sed -i 's/end-of-stream@1.4.5/end-of-stream@1.4.4/g' pnpm-lock.yaml \
-    && pnpm store prune
+# 修复 pnpm-lock.yaml 中的依赖版本问题并初始化 store
+RUN if [ -f pnpm-lock.yaml ]; then \
+        sed -i 's/end-of-stream@1.4.5/end-of-stream@1.4.4/g' pnpm-lock.yaml; \
+    fi \
+    && pnpm store prune || true
 
 # 安装项目依赖（包括开发依赖）
 RUN --mount=type=cache,target=/root/.pnpm-store \

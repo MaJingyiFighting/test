@@ -448,6 +448,38 @@ RUN mkdir -p /app/data/files /app/data/temp \
     /app/temp /app/cache
 ```
 
+### 10. pnpm store 目录不存在问题
+
+**问题描述**：
+```
+ENOENT  ENOENT: no such file or directory, scandir '/root/.pnpm-store/v3/files'
+```
+
+**原因分析**：
+1. pnpm store 目录在执行 `pnpm store prune` 命令时不存在
+2. Docker 构建过程中目录结构未完全初始化
+3. pnpm 配置顺序不当导致目录访问失败
+4. 文件系统权限问题
+
+**解决方案**：
+1. 在执行 pnpm 命令前确保 store 目录存在
+2. 使用 `mkdir -p` 创建必要的目录结构
+3. 优化 pnpm 配置和命令执行顺序
+4. 添加错误处理机制，避免命令失败中断构建
+
+**具体改进**：
+```dockerfile
+# 确保 pnpm store 目录存在
+RUN mkdir -p /root/.pnpm-store/v3/files \
+    && pnpm config set store-dir /root/.pnpm-store
+
+# 添加错误处理
+RUN if [ -f pnpm-lock.yaml ]; then \
+        sed -i 's/end-of-stream@1.4.5/end-of-stream@1.4.4/g' pnpm-lock.yaml; \
+    fi \
+    && pnpm store prune || true
+```
+
 ## 最佳实践建议
 
 1. **依赖管理**：
@@ -540,4 +572,10 @@ RUN mkdir -p /app/data/files /app/data/temp \
 - 修复构建资源缺失问题
 - 优化构建流程和依赖管理
 - 移除不必要的文件引用
+- 更新构建文档
+
+### 2024-03-21
+- 修复 pnpm store 目录不存在问题
+- 优化 pnpm 配置和命令执行顺序
+- 添加错误处理机制
 - 更新构建文档 
