@@ -178,6 +178,35 @@ RUN --mount=type=cache,target=/root/.pnpm-store \
     (pnpm store prune && pnpm install --frozen-lockfile)
 ```
 
+### 3. 依赖包版本不存在问题
+
+**问题描述**：
+```
+ERR_PNPM_FETCH_404  GET https://registry.npmjs.org/end-of-stream/-/end-of-stream-1.4.5.tgz: Not Found - 404
+No authorization header was set for the request.
+```
+
+**原因分析**：
+1. 项目的 `pnpm-lock.yaml` 文件中引用了不存在的依赖版本 `end-of-stream@1.4.5`
+2. 该版本在 npm 官方仓库中不存在，实际最新版本是 `1.4.4`
+3. 使用 `--frozen-lockfile` 参数时，pnpm 会严格按照锁文件安装，导致失败
+
+**解决方案**：
+1. 修改 `pnpm-lock.yaml` 文件中的版本号
+2. 使用 `--no-frozen-lockfile` 参数允许版本自动调整
+3. 在构建过程中自动修复版本问题
+
+**具体改进**：
+```dockerfile
+# 修复 pnpm-lock.yaml 中的依赖版本问题
+RUN sed -i 's/end-of-stream@1.4.5/end-of-stream@1.4.4/g' pnpm-lock.yaml
+
+# 安装项目依赖
+RUN --mount=type=cache,target=/root/.pnpm-store \
+    pnpm install --no-frozen-lockfile || \
+    (pnpm store prune && pnpm install --no-frozen-lockfile)
+```
+
 ## 最佳实践建议
 
 1. **依赖管理**：
@@ -185,16 +214,19 @@ RUN --mount=type=cache,target=/root/.pnpm-store \
    - 锁定包管理器版本
    - 配置依赖缓存
    - 实现失败重试机制
+   - 定期更新依赖锁文件
 
 2. **构建优化**：
    - 使用多阶段构建
    - 合理设置缓存
    - 优化层级结构
+   - 自动修复常见问题
 
 3. **版本控制**：
    - 明确指定工具版本
    - 避免使用 `latest` 标签
    - 定期更新依赖版本
+   - 验证依赖版本的有效性
 
 4. **安全性**：
    - 使用非 root 用户
@@ -219,4 +251,10 @@ RUN --mount=type=cache,target=/root/.pnpm-store \
 - 修复 pnpm 命令行参数兼容性问题
 - 锁定 pnpm 版本为 8.15.4
 - 优化构建流程
-- 更新故障排除文档 
+- 更新故障排除文档
+
+### 2024-03-14
+- 修复依赖包版本不存在问题
+- 添加自动修复锁文件的步骤
+- 使用 --no-frozen-lockfile 参数提高兼容性
+- 更新故障排除文档和最佳实践 

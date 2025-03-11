@@ -42,10 +42,13 @@ RUN npm install -g pnpm@8.15.4 \
 # 复制 package.json 和 lock 文件
 COPY package.json pnpm-lock.yaml ./
 
+# 修复 pnpm-lock.yaml 中的依赖版本问题
+RUN sed -i 's/end-of-stream@1.4.5/end-of-stream@1.4.4/g' pnpm-lock.yaml
+
 # 安装项目依赖
 RUN --mount=type=cache,target=/root/.pnpm-store \
-    pnpm install --frozen-lockfile || \
-    (pnpm store prune && pnpm install --frozen-lockfile)
+    pnpm install --no-frozen-lockfile || \
+    (pnpm store prune && pnpm install --no-frozen-lockfile)
 
 # 复制构建配置文件
 COPY .erb/ .erb/
