@@ -139,3 +139,61 @@
 2. 除非获得商业授权，否则无论以何种方式修改或者使用代码，都需要开源，并保留相关版权信息。
 3. 详细内容请参见 [AGPL-3.0 开源协议](./LICENSE)。
 4. 联系请加上面的小助手，或者在 GitHub 上提 issue。
+
+# 懒人客服 Docker 版
+
+![Docker Build Status](https://github.com/MaJingyiFighting/test/actions/workflows/docker-build.yml/badge.svg)
+
+## 项目说明
+
+基于 LLM 大语言模型的知识库的集成客服系统，提供开箱即用的智能客服解决方案。
+
+## Docker 部署
+
+### 快速开始
+
+```bash
+# 拉取镜像
+docker pull ghcr.io/majingyifighting/test:latest
+
+# 运行容器
+docker run -d \
+  --name lazy-cs \
+  -p 3000:3000 \
+  -p 3001:3001 \
+  -v /path/to/logs:/app/logs \
+  -v /path/to/config:/app/config \
+  ghcr.io/majingyifighting/test:latest
+```
+
+### 环境变量配置
+
+| 变量名 | 说明 | 默认值 |
+|--------|------|--------|
+| NODE_ENV | 运行环境 | production |
+| NODE_OPTIONS | Node.js 内存配置 | --max-old-space-size=4096 |
+
+### 数据卷
+
+- `/app/logs`: 日志目录
+- `/app/config`: 配置文件目录
+
+## 开发说明
+
+### 本地构建
+
+```bash
+# 构建镜像
+docker build -t lazy-cs:dev -f docker/Dockerfile .
+
+# 运行开发容器
+docker run -it --rm \
+  -p 3000:3000 \
+  -p 3001:3001 \
+  -v $(pwd):/app \
+  lazy-cs:dev
+```
+
+## 许可证
+
+AGPL-3.0
