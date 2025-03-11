@@ -126,7 +126,7 @@ docker run -it --rm \
 
 ## 故障记录与解决方案
 
-### 1. pnpm 依赖安装失败
+### 1. pnpm 依赖安装失败 - 镜像源问题
 
 **问题描述**：
 ```
@@ -142,32 +142,47 @@ No authorization header was set for the request.
 
 **解决方案**：
 1. 切换到官方 npm 源：`registry.npmjs.org`
-2. 使用最新版 pnpm 安装脚本
-3. 增加网络超时时间
-4. 禁用严格的 SSL 验证
-5. 配置 pnpm 环境变量
-6. 添加重试机制和缓存清理
+2. 使用特定版本的 pnpm
+3. 禁用严格的 SSL 验证
+4. 添加重试机制和缓存清理
+
+### 2. pnpm 命令行参数兼容性问题
+
+**问题描述**：
+```
+ERROR  Unknown options: 'frozen-lockfile', 'network-timeout'
+For help, run: pnpm help add
+```
+
+**原因分析**：
+1. pnpm 10.x 版本更改了命令行参数格式
+2. `--frozen-lockfile` 和 `--network-timeout` 在新版本中不再支持
+3. 自动安装的最新版本 pnpm 与项目配置不兼容
+
+**解决方案**：
+1. 明确指定使用 pnpm 8.x 版本
+2. 移除不兼容的参数
+3. 使用 npm 全局安装而不是脚本安装
 
 **具体改进**：
 ```dockerfile
-ENV PNPM_HOME="/root/.local/share/pnpm" \
-    PATH="/root/.local/share/pnpm:$PATH"
-
-RUN curl -fsSL https://get.pnpm.io/install.sh | bash - \
+# 安装特定版本的 pnpm (8.x)
+RUN npm install -g pnpm@8.15.4 \
     && pnpm config set registry https://registry.npmjs.org/ \
     && pnpm config set store-dir /root/.pnpm-store \
     && pnpm config set strict-ssl false
 
+# 安装项目依赖
 RUN --mount=type=cache,target=/root/.pnpm-store \
-    pnpm install --frozen-lockfile --network-timeout 100000 || \
-    (pnpm store prune && pnpm install --frozen-lockfile --network-timeout 100000)
+    pnpm install --frozen-lockfile || \
+    (pnpm store prune && pnpm install --frozen-lockfile)
 ```
 
 ## 最佳实践建议
 
 1. **依赖管理**：
    - 使用官方包源而不是镜像源
-   - 设置合理的网络超时时间
+   - 锁定包管理器版本
    - 配置依赖缓存
    - 实现失败重试机制
 
@@ -176,7 +191,12 @@ RUN --mount=type=cache,target=/root/.pnpm-store \
    - 合理设置缓存
    - 优化层级结构
 
-3. **安全性**：
+3. **版本控制**：
+   - 明确指定工具版本
+   - 避免使用 `latest` 标签
+   - 定期更新依赖版本
+
+4. **安全性**：
    - 使用非 root 用户
    - 最小化安装包
    - 及时更新依赖
@@ -193,4 +213,10 @@ RUN --mount=type=cache,target=/root/.pnpm-store \
 - 优化 pnpm 包管理器配置
 - 修复依赖安装失败问题
 - 添加故障记录与解决方案
-- 更新构建最佳实践建议 
+- 更新构建最佳实践建议
+
+### 2024-03-13
+- 修复 pnpm 命令行参数兼容性问题
+- 锁定 pnpm 版本为 8.15.4
+- 优化构建流程
+- 更新故障排除文档 

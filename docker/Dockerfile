@@ -6,9 +6,7 @@ ENV NODE_ENV=production \
     ELECTRON_DISABLE_SANDBOX=true \
     DISPLAY=:99 \
     DEBIAN_FRONTEND=noninteractive \
-    NODE_OPTIONS="--max-old-space-size=4096" \
-    PNPM_HOME="/root/.local/share/pnpm" \
-    PATH="/root/.local/share/pnpm:$PATH"
+    NODE_OPTIONS="--max-old-space-size=4096"
 
 # 系统依赖安装
 RUN apt-get update && apt-get install -y \
@@ -35,8 +33,8 @@ RUN groupadd -r appuser && useradd -r -g appuser appuser
 # 创建应用目录
 WORKDIR /app
 
-# 安装 pnpm
-RUN curl -fsSL https://get.pnpm.io/install.sh | bash - \
+# 安装特定版本的 pnpm (8.x)
+RUN npm install -g pnpm@8.15.4 \
     && pnpm config set registry https://registry.npmjs.org/ \
     && pnpm config set store-dir /root/.pnpm-store \
     && pnpm config set strict-ssl false
@@ -46,8 +44,8 @@ COPY package.json pnpm-lock.yaml ./
 
 # 安装项目依赖
 RUN --mount=type=cache,target=/root/.pnpm-store \
-    pnpm install --frozen-lockfile --network-timeout 100000 || \
-    (pnpm store prune && pnpm install --frozen-lockfile --network-timeout 100000)
+    pnpm install --frozen-lockfile || \
+    (pnpm store prune && pnpm install --frozen-lockfile)
 
 # 复制构建配置文件
 COPY .erb/ .erb/
