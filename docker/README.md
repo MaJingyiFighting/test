@@ -81,6 +81,39 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 ```
 
+### 4. 构建环境依赖缺失问题
+
+**问题描述**：
+```
+devDependencies: skipped because NODE_ENV is set to production
+sh: 1: ts-node: not found
+ELIFECYCLE  Command failed.
+```
+
+**原因分析**：
+1. 在生产环境模式下，pnpm 跳过了开发依赖的安装
+2. 构建脚本依赖于 `ts-node` 等开发工具
+3. 环境变量设置不当导致构建失败
+
+**解决方案**：
+1. 构建阶段使用开发环境模式
+2. 全局安装必要的构建工具
+3. 构建完成后再切换到生产环境模式
+4. 分阶段设置环境变量
+
+**具体改进**：
+```dockerfile
+# 设置开发环境进行构建
+ENV NODE_ENV=development
+
+# 安装必要的全局工具
+RUN npm install -g pnpm@8.15.4 ts-node typescript \
+    && pnpm config set registry https://registry.npmjs.org/
+
+# 构建完成后切换到生产环境
+ENV NODE_ENV=production
+```
+
 ## 构建步骤记录
 
 1. 初始环境设置
@@ -207,6 +240,39 @@ RUN --mount=type=cache,target=/root/.pnpm-store \
     (pnpm store prune && pnpm install --no-frozen-lockfile)
 ```
 
+### 4. 构建环境依赖缺失问题
+
+**问题描述**：
+```
+devDependencies: skipped because NODE_ENV is set to production
+sh: 1: ts-node: not found
+ELIFECYCLE  Command failed.
+```
+
+**原因分析**：
+1. 在生产环境模式下，pnpm 跳过了开发依赖的安装
+2. 构建脚本依赖于 `ts-node` 等开发工具
+3. 环境变量设置不当导致构建失败
+
+**解决方案**：
+1. 构建阶段使用开发环境模式
+2. 全局安装必要的构建工具
+3. 构建完成后再切换到生产环境模式
+4. 分阶段设置环境变量
+
+**具体改进**：
+```dockerfile
+# 设置开发环境进行构建
+ENV NODE_ENV=development
+
+# 安装必要的全局工具
+RUN npm install -g pnpm@8.15.4 ts-node typescript \
+    && pnpm config set registry https://registry.npmjs.org/
+
+# 构建完成后切换到生产环境
+ENV NODE_ENV=production
+```
+
 ## 最佳实践建议
 
 1. **依赖管理**：
@@ -233,6 +299,12 @@ RUN --mount=type=cache,target=/root/.pnpm-store \
    - 最小化安装包
    - 及时更新依赖
 
+5. **环境配置**：
+   - 区分构建环境和运行环境
+   - 合理设置环境变量
+   - 确保构建工具可用
+   - 优化生产环境配置
+
 ## 更新日志
 
 ### 2024-03-11
@@ -257,4 +329,10 @@ RUN --mount=type=cache,target=/root/.pnpm-store \
 - 修复依赖包版本不存在问题
 - 添加自动修复锁文件的步骤
 - 使用 --no-frozen-lockfile 参数提高兼容性
-- 更新故障排除文档和最佳实践 
+- 更新故障排除文档和最佳实践
+
+### 2024-03-15
+- 修复构建环境依赖问题
+- 优化环境变量配置
+- 添加全局构建工具
+- 更新构建最佳实践 
