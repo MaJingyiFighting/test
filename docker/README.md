@@ -417,6 +417,37 @@ RUN mkdir -p /app/data/files /app/data/temp \
     /app/temp /app/cache
 ```
 
+### 9. 构建资源缺失问题
+
+**问题描述**：
+```
+ERROR: failed to solve: failed to compute cache key: failed to calculate checksum of ref c0ai3ipdzesg85dacy56coodm::4vems7m1a30ov5y0nffq1awmv: "/docker/privacy-protection/apply-patches.js": not found
+```
+
+**原因分析**：
+1. Dockerfile 引用了不存在的文件或目录
+2. 构建上下文中缺少必要的资源文件
+3. 文件路径配置错误
+4. 可选功能的依赖文件缺失
+
+**解决方案**：
+1. 移除不存在的文件引用
+2. 确保所有必要文件存在于构建上下文中
+3. 将可选功能设置为条件执行
+4. 优化构建流程，减少不必要的依赖
+
+**具体改进**：
+```dockerfile
+# 移除不存在的文件引用
+- COPY docker/privacy-protection/apply-patches.js /app/docker/privacy-protection/
+- RUN cd /app && node /app/docker/privacy-protection/apply-patches.js || true
+
+# 优化目录结构
+RUN mkdir -p /app/data/files /app/data/temp \
+    /app/logs /app/plugins /app/config \
+    /app/temp /app/cache
+```
+
 ## 最佳实践建议
 
 1. **依赖管理**：
@@ -503,4 +534,10 @@ RUN mkdir -p /app/data/files /app/data/temp \
 - 整合容器安全性优化
 - 添加隐私保护机制
 - 优化系统配置和依赖
-- 完善目录结构设计 
+- 完善目录结构设计
+
+### 2024-03-20
+- 修复构建资源缺失问题
+- 优化构建流程和依赖管理
+- 移除不必要的文件引用
+- 更新构建文档 

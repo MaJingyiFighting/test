@@ -118,10 +118,6 @@ RUN mkdir -p /app/logs && chown -R appuser:appuser /app/logs
 RUN mkdir -p /app/data/files /app/data/temp /app/logs /app/plugins /app/config /app/temp /app/cache \
     && chown -R appuser:appuser /app/data /app/logs /app/plugins /app/config /app/temp /app/cache
 
-# 应用隐私保护（如果有相关脚本）
-COPY docker/privacy-protection/apply-patches.js /app/docker/privacy-protection/
-RUN cd /app && node /app/docker/privacy-protection/apply-patches.js || true
-
 # 构建应用
 RUN pnpm run build
 
