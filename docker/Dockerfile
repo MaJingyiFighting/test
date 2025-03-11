@@ -2,11 +2,12 @@
 FROM node:18.19.1-bullseye
 
 # 设置环境变量
-ENV NODE_ENV=production \
+ENV NODE_ENV=development \
     ELECTRON_DISABLE_SANDBOX=true \
     DISPLAY=:99 \
     DEBIAN_FRONTEND=noninteractive \
-    NODE_OPTIONS="--max-old-space-size=4096"
+    NODE_OPTIONS="--max-old-space-size=4096" \
+    PATH="/root/.local/share/pnpm:$PATH"
 
 # 系统依赖安装
 RUN apt-get update && apt-get install -y \
@@ -33,8 +34,10 @@ RUN groupadd -r appuser && useradd -r -g appuser appuser
 # 创建应用目录
 WORKDIR /app
 
-# 安装特定版本的 pnpm (8.x)
+# 安装特定版本的 pnpm (8.x) 和全局依赖
 RUN npm install -g pnpm@8.15.4 \
+    && pnpm setup \
+    && pnpm install -g ts-node typescript electron-builder \
     && pnpm config set registry https://registry.npmjs.org/ \
     && pnpm config set store-dir /root/.pnpm-store \
     && pnpm config set strict-ssl false
@@ -42,13 +45,14 @@ RUN npm install -g pnpm@8.15.4 \
 # 复制 package.json 和 lock 文件
 COPY package.json pnpm-lock.yaml ./
 
-# 修复 pnpm-lock.yaml 中的依赖版本问题
-RUN sed -i 's/end-of-stream@1.4.5/end-of-stream@1.4.4/g' pnpm-lock.yaml
+# 修复 pnpm-lock.yaml 中的依赖版本问题并清理缓存
+RUN sed -i 's/end-of-stream@1.4.5/end-of-stream@1.4.4/g' pnpm-lock.yaml \
+    && pnpm store prune
 
-# 安装项目依赖
+# 安装项目依赖（包括开发依赖）
 RUN --mount=type=cache,target=/root/.pnpm-store \
-    pnpm install --no-frozen-lockfile || \
-    (pnpm store prune && pnpm install --no-frozen-lockfile)
+    ELECTRON_SKIP_BINARY_DOWNLOAD=1 pnpm install --no-frozen-lockfile --ignore-scripts \
+    && pnpm rebuild
 
 # 复制构建配置文件
 COPY .erb/ .erb/
@@ -63,6 +67,9 @@ RUN mkdir -p /app/logs && chown -R appuser:appuser /app/logs
 
 # 构建应用
 RUN pnpm run build
+
+# 生产环境优化
+ENV NODE_ENV=production
 
 # 复制启动脚本
 COPY docker/docker-entrypoint.sh /usr/local/bin/

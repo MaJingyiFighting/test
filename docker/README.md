@@ -273,6 +273,42 @@ RUN npm install -g pnpm@8.15.4 ts-node typescript \
 ENV NODE_ENV=production
 ```
 
+### 5. pnpm 全局工具路径问题
+
+**问题描述**：
+```
+sh: 1: ts-node: not found
+ELIFECYCLE  Command failed.
+devDependencies: skipped because NODE_ENV is set to production
+```
+
+**原因分析**：
+1. 全局安装的工具无法在 PATH 中找到
+2. pnpm 全局安装路径未正确配置
+3. 构建脚本执行顺序问题
+4. electron 相关依赖下载导致构建失败
+
+**解决方案**：
+1. 添加 pnpm 全局路径到 PATH 环境变量
+2. 使用 `pnpm setup` 初始化环境
+3. 分步骤安装和重建依赖
+4. 跳过 electron 二进制下载
+
+**具体改进**：
+```dockerfile
+# 配置 pnpm 全局路径
+ENV PATH="/root/.local/share/pnpm:$PATH"
+
+# 安装和配置 pnpm
+RUN npm install -g pnpm@8.15.4 \
+    && pnpm setup \
+    && pnpm install -g ts-node typescript electron-builder
+
+# 优化依赖安装
+RUN ELECTRON_SKIP_BINARY_DOWNLOAD=1 pnpm install --no-frozen-lockfile --ignore-scripts \
+    && pnpm rebuild
+```
+
 ## 最佳实践建议
 
 1. **依赖管理**：
@@ -335,4 +371,10 @@ ENV NODE_ENV=production
 - 修复构建环境依赖问题
 - 优化环境变量配置
 - 添加全局构建工具
-- 更新构建最佳实践 
+- 更新构建最佳实践
+
+### 2024-03-16
+- 修复 pnpm 全局工具路径问题
+- 优化依赖安装流程
+- 添加 electron 构建优化
+- 更新构建文档 
